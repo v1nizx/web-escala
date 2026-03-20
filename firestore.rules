@@ -1,0 +1,17 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Escalas: leitura e escrita pública (voluntários preenchem sem login)
+    match /escalas/{escalaId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Membros: leitura pública, escrita somente autenticado
+    match /membros/{membroId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
