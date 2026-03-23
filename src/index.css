@@ -29,6 +29,14 @@
     border-radius: 999px;
   }
 
+  /* Fix native width/padding on inputs in mobile */
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+    display: block;
+  }
+
   /* Fix date/select inputs on dark theme */
   input[type="date"]::-webkit-calendar-picker-indicator {
     filter: invert(0.7);
@@ -39,3 +47,4 @@
     color: #e2e8f0;
   }
 }
+

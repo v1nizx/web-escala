@@ -232,7 +232,7 @@ export default function EscalaPage() {
                 value={dataEscala}
                 onChange={(e) => setDataEscala(e.target.value)}
                 required
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all text-sm"
+                className="block w-full max-w-full appearance-none min-w-0 px-3 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all text-sm"
               />
             </div>
 
