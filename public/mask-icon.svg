@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!--
+    mask-icon.svg — usado pelo Safari pinned tab e para masked PWA icons.
+    DEVE ser totalmente preto (#000) num fundo transparente.
+    A cor real é definida pelo atributo color na tag <link rel="mask-icon">.
+  -->
+  <text x="50" y="62" text-anchor="middle" font-size="44" font-family="Arial, sans-serif" font-weight="bold" fill="#000">✝</text>
+  <text x="50" y="82" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-weight="600" fill="#000">PASCOM</text>
+</svg>

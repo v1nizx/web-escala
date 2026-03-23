@@ -18,6 +18,8 @@ export default function AdminPage() {
   const [membros, setMembros] = useState([]);
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
+  const [deletando, setDeletando] = useState(null); // id sendo deletado
+  const [erro, setErro] = useState('');
 
   // Form state
   const [dataEscala, setDataEscala] = useState('');
@@ -26,6 +28,7 @@ export default function AdminPage() {
 
   const carregarDados = useCallback(async () => {
     setLoading(true);
+    setErro('');
     try {
       const [escalasDados, membrosDados] = await Promise.all([
         getEscalasPorMes(mesAtual),
@@ -35,6 +38,7 @@ export default function AdminPage() {
       setMembros(membrosDados);
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
+      setErro('Não foi possível carregar os dados. Verifique sua conexão.');
     } finally {
       setLoading(false);
     }
@@ -51,6 +55,7 @@ export default function AdminPage() {
     setSalvando(true);
     try {
       const membro = membros.find((m) => m.id === membroSelecionado);
+      if (!membro) throw new Error('Membro não encontrado');
       await adicionarEscala({
         data: new Date(dataEscala + 'T12:00:00'),
         membroId: membroSelecionado,
@@ -71,11 +76,15 @@ export default function AdminPage() {
 
   async function handleDeletar(id) {
     if (!confirm('Deseja realmente deletar esta escala?')) return;
+    setDeletando(id);
     try {
       await deletarEscala(id);
       await carregarDados();
     } catch (err) {
       console.error('Erro ao deletar:', err);
+      alert('Erro ao deletar. Tente novamente.');
+    } finally {
+      setDeletando(null);
     }
   }
 
@@ -160,15 +169,36 @@ export default function AdminPage() {
           disabled={salvando}
           className="w-full px-4 py-3 rounded-xl font-semibold text-sm bg-green-700 text-white hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-lg shadow-green-700/25"
         >
-          {salvando ? 'Salvando…' : '+ Adicionar Escala'}
+          {salvando ? (
+            <span className="inline-flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Salvando…
+            </span>
+          ) : (
+            '+ Adicionar Escala'
+          )}
         </button>
       </form>
+
+      {/* Erro de carregamento */}
+      {erro && (
+        <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm text-center">
+          {erro}
+          <button onClick={carregarDados} className="ml-2 underline hover:no-underline">
+            Tentar novamente
+          </button>
+        </div>
+      )}
 
       {/* Navegação entre meses */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => setMesAtual((prev) => subMonths(prev, 1))}
           className="w-10 h-10 flex items-center justify-center rounded-xl bg-green-900/50 text-green-300 hover:bg-green-800/60 hover:text-white transition-all active:scale-95 border border-green-800/30"
+          aria-label="Mês anterior"
         >
           ‹
         </button>
@@ -178,6 +208,7 @@ export default function AdminPage() {
         <button
           onClick={() => setMesAtual((prev) => addMonths(prev, 1))}
           className="w-10 h-10 flex items-center justify-center rounded-xl bg-green-900/50 text-green-300 hover:bg-green-800/60 hover:text-white transition-all active:scale-95 border border-green-800/30"
+          aria-label="Próximo mês"
         >
           ›
         </button>
@@ -201,7 +232,7 @@ export default function AdminPage() {
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-slate-500">
-                    {format(escala.data, "dd/MM/yyyy · EEEE", { locale: ptBR })}
+                    {format(escala.data, 'dd/MM/yyyy · EEEE', { locale: ptBR })}
                   </p>
                   <p className="text-sm font-medium text-slate-200 truncate">
                     {escala.nome}
@@ -212,10 +243,18 @@ export default function AdminPage() {
                 </div>
                 <button
                   onClick={() => handleDeletar(escala.id)}
-                  className="ml-3 w-9 h-9 flex items-center justify-center rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+                  disabled={deletando === escala.id}
+                  className="ml-3 w-9 h-9 flex items-center justify-center rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0 disabled:opacity-40"
                   title="Deletar escala"
                 >
-                  🗑
+                  {deletando === escala.id ? (
+                    <svg className="animate-spin h-4 w-4 text-red-400" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    '🗑'
+                  )}
                 </button>
               </div>
             );

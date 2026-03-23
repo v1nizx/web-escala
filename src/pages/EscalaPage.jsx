@@ -11,6 +11,7 @@ export default function EscalaPage() {
   const [escalas, setEscalas] = useState([]);
   const [membros, setMembros] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState('');
 
   // Formulário de voluntário
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -22,6 +23,7 @@ export default function EscalaPage() {
 
   const carregarDados = useCallback(async () => {
     setLoading(true);
+    setErro('');
     try {
       const [escalasDados, membrosDados] = await Promise.all([
         getEscalasPorMes(mesAtual),
@@ -31,6 +33,7 @@ export default function EscalaPage() {
       setMembros(membrosDados);
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
+      setErro('Não foi possível carregar os dados. Verifique sua conexão.');
     } finally {
       setLoading(false);
     }
@@ -55,6 +58,7 @@ export default function EscalaPage() {
     setSalvando(true);
     try {
       const membro = membros.find((m) => m.id === membroSelecionado);
+      if (!membro) throw new Error('Membro não encontrado');
       await adicionarEscala({
         data: new Date(dataEscala + 'T12:00:00'),
         membroId: membroSelecionado,
@@ -81,8 +85,9 @@ export default function EscalaPage() {
     const inicioSemana = startOfWeek(hoje, { weekStartsOn: 0 });
     const fimSemana = endOfWeek(hoje, { weekStartsOn: 0 });
 
+    // BUG FIX: comparação de datas deve usar getTime() para ser confiável
     const escalaSemana = escalas.filter(
-      (e) => e.data >= inicioSemana && e.data <= fimSemana
+      (e) => e.data.getTime() >= inicioSemana.getTime() && e.data.getTime() <= fimSemana.getTime()
     );
 
     if (escalaSemana.length === 0) {
@@ -93,7 +98,7 @@ export default function EscalaPage() {
     const funcaoLabel = { camera: 'Câmera', stories: 'Stories', apoio: 'Apoio' };
 
     let texto = '✝️ *Escala PASCOM*\n';
-    texto += `📅 Semana de ${format(inicioSemana, "dd/MM", { locale: ptBR })} a ${format(fimSemana, "dd/MM", { locale: ptBR })}\n\n`;
+    texto += `📅 Semana de ${format(inicioSemana, 'dd/MM', { locale: ptBR })} a ${format(fimSemana, 'dd/MM', { locale: ptBR })}\n\n`;
 
     escalaSemana.forEach((e) => {
       const emoji = funcaoEmoji[e.funcao] || '🤝';
@@ -113,7 +118,7 @@ export default function EscalaPage() {
       return;
     }
     const url = `https://wa.me/?text=${encodeURIComponent(texto)}`;
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   const mesFormatado = format(mesAtual, "MMMM 'de' yyyy", { locale: ptBR });
@@ -170,6 +175,19 @@ export default function EscalaPage() {
       {mensagemSucesso && (
         <div className="px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/30 text-green-400 text-sm text-center animate-pulse">
           {mensagemSucesso}
+        </div>
+      )}
+
+      {/* Erro de carregamento */}
+      {erro && (
+        <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm text-center">
+          {erro}
+          <button
+            onClick={carregarDados}
+            className="ml-2 underline hover:no-underline"
+          >
+            Tentar novamente
+          </button>
         </div>
       )}
 
@@ -240,7 +258,17 @@ export default function EscalaPage() {
             disabled={salvando}
             className="w-full px-4 py-3 rounded-xl font-semibold text-sm bg-amber-600 text-white hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-lg shadow-amber-600/25"
           >
-            {salvando ? 'Salvando…' : '✓ Confirmar minha escala'}
+            {salvando ? (
+              <span className="inline-flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Salvando…
+              </span>
+            ) : (
+              '✓ Confirmar minha escala'
+            )}
           </button>
         </form>
       )}
@@ -255,7 +283,7 @@ export default function EscalaPage() {
       )}
 
       {/* Lista de escalas */}
-      {!loading && escalas.length > 0 && (
+      {!loading && !erro && escalas.length > 0 && (
         <div className="space-y-3">
           {escalas.map((escala) => (
             <EscalaCard key={escala.id} escala={escala} />
@@ -264,7 +292,7 @@ export default function EscalaPage() {
       )}
 
       {/* Sem escalas */}
-      {!loading && escalas.length === 0 && (
+      {!loading && !erro && escalas.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 space-y-3">
           <span className="text-5xl">📋</span>
           <p className="text-slate-500 text-center text-sm">

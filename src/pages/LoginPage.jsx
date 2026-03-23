@@ -39,7 +39,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-8">
         {/* Header */}
         <div className="text-center space-y-2">
-          <img src="/logo-pascom.png" alt="PASCOM" className="w-24 h-24 object-contain mx-auto mb-2" />
+          <img src="/pwa-192x192.png" alt="PASCOM" className="w-24 h-24 object-contain mx-auto mb-2 rounded-2xl shadow-lg border border-slate-700/50" />
           <h1 className="text-2xl font-bold text-slate-100">Acesso Admin</h1>
           <p className="text-sm text-slate-500">
             Entre com suas credenciais para gerenciar as escalas
