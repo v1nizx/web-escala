@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { gerarSabadosMes, formatarDataBR, ehSabado, mesmaData } from '../utils/dateUtils';
-import { getDiasEspeciaisMes, ehDiaEspecial } from '../firebase/excecoes';
+import { getDiasEspeciaisMes, ehDiaEspecial, getSabadosRemovidosMes, ehSabadoRemovido } from '../firebase/excecoes';
 
 export default function CalendarioEscalas({ mesAtual, escalas = [] }) {
   const [sabados, setSabados] = useState([]);
   const [diasEspeciais, setDiasEspeciais] = useState([]);
+  const [sabadosRemovidos, setSabadosRemovidos] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,9 +18,13 @@ export default function CalendarioEscalas({ mesAtual, escalas = [] }) {
         const sabadosMes = gerarSabadosMes(mesAtual);
         setSabados(sabadosMes);
 
-        // Carrega dias especiais do mês
-        const diasEspeciaisData = await getDiasEspeciaisMes(mesAtual);
+        // Carrega dias especiais e sábados removidos do mês
+        const [diasEspeciaisData, sabadosRemovidosData] = await Promise.all([
+          getDiasEspeciaisMes(mesAtual),
+          getSabadosRemovidosMes(mesAtual),
+        ]);
         setDiasEspeciais(diasEspeciaisData);
+        setSabadosRemovidos(sabadosRemovidosData);
       } catch (error) {
         console.error('Erro ao carregar calendário:', error);
       } finally {
@@ -69,10 +74,12 @@ export default function CalendarioEscalas({ mesAtual, escalas = [] }) {
         ) : (
           <>
             {/* Sábados */}
-            {sabados.length > 0 && (
+            {sabados.filter((sabado) => !ehSabadoRemovido(sabado, sabadosRemovidos)).length > 0 && (
               <div>
                 <h3 className="text-xs font-semibold text-primary-400 uppercase mb-2">Sábados</h3>
-                {sabados.map((sabado) => {
+                {sabados
+                  .filter((sabado) => !ehSabadoRemovido(sabado, sabadosRemovidos))
+                  .map((sabado) => {
                   const dataFormatada = formatarDataBR(sabado);
                   const temEscalas = escalas.filter(e => formatarDataBR(e.data) === dataFormatada) || [];
 

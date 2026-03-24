@@ -19,5 +19,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+
+    // Sábados Removidos: leitura e escrita pública para admin
+    match /sabados_removidos/{sabadoId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }
