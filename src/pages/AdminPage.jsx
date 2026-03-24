@@ -3,39 +3,52 @@ import { Link } from 'react-router-dom';
 import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getEscalasPorMes, adicionarEscala, deletarEscala } from '../firebase/escalas';
+import { getDiasEspeciaisMes, adicionarDiaEspecial, deletarDiaEspecial } from '../firebase/excecoes';
 import { getMembrosAtivos } from '../firebase/membros';
+import { gerarSabadosMes, formatarDataBR } from '../utils/dateUtils';
 import SkeletonCard from '../components/SkeletonCard';
 
 const funcaoConfig = {
-  camera: { label: 'Câmera', icon: '📹', color: 'text-blue-400' },
-  stories: { label: 'Stories', icon: '📱', color: 'text-purple-400' },
-  apoio: { label: 'Apoio', icon: '🤝', color: 'text-slate-400' },
+  camera: { label: 'Câmera', icon: '📹', color: 'text-primary-400' },
+  stories: { label: 'Stories', icon: '📱', color: 'text-gold-400' },
+  apoio: { label: 'Apoio', icon: '🤝', color: 'text-primary-300' },
 };
 
 export default function AdminPage() {
   const [mesAtual, setMesAtual] = useState(new Date());
   const [escalas, setEscalas] = useState([]);
   const [membros, setMembros] = useState([]);
+  const [diasEspeciais, setDiasEspeciais] = useState([]);
+  const [sabados, setSabados] = useState([]);
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
-  const [deletando, setDeletando] = useState(null); // id sendo deletado
+  const [deletando, setDeletando] = useState(null);
   const [erro, setErro] = useState('');
 
-  // Form state
+  // Form state - Escala
   const [dataEscala, setDataEscala] = useState('');
   const [membroSelecionado, setMembroSelecionado] = useState('');
   const [funcaoSelecionada, setFuncaoSelecionada] = useState('camera');
+
+  // Form state - Dia Especial
+  const [dataDiaEspecial, setDataDiaEspecial] = useState('');
+  const [motivoDiaEspecial, setMotivoDiaEspecial] = useState('');
+  const [salvandoDiaEspecial, setSalvandoDiaEspecial] = useState(false);
+  const [deletandoDiaEspecial, setDeletandoDiaEspecial] = useState(null);
 
   const carregarDados = useCallback(async () => {
     setLoading(true);
     setErro('');
     try {
-      const [escalasDados, membrosDados] = await Promise.all([
+      const [escalasDados, membrosDados, diasEspeciaisData] = await Promise.all([
         getEscalasPorMes(mesAtual),
         getMembrosAtivos(),
+        getDiasEspeciaisMes(mesAtual),
       ]);
       setEscalas(escalasDados);
       setMembros(membrosDados);
+      setDiasEspeciais(diasEspeciaisData);
+      setSabados(gerarSabadosMes(mesAtual));
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
       setErro('Não foi possível carregar os dados. Verifique sua conexão.');
@@ -88,104 +101,57 @@ export default function AdminPage() {
     }
   }
 
-  const mesFormatado = format(mesAtual, "MMMM 'de' yyyy", { locale: ptBR });
+  async function handleAdicionarDiaEspecial(e) {
+    e.preventDefault();
+    if (!dataDiaEspecial || !motivoDiaEspecial.trim()) return;
+
+    setSalvandoDiaEspecial(true);
+    try {
+      await adicionarDiaEspecial({
+        data: new Date(dataDiaEspecial + 'T12:00:00'),
+        motivo: motivoDiaEspecial,
+      });
+      setDataDiaEspecial('');
+      setMotivoDiaEspecial('');
+      await carregarDados();
+    } catch (err) {
+      console.error('Erro ao adicionar dia especial:', err);
+      alert('Erro ao salvar. Tente novamente.');
+    } finally {
+      setSalvandoDiaEspecial(false);
+    }
+  }
+
+  async function handleDeletarDiaEspecial(id) {
+    if (!confirm('Deseja realmente remover este dia especial?')) return;
+    setDeletandoDiaEspecial(id);
+    try {
+      await deletarDiaEspecial(id);
+      await carregarDados();
+    } catch (err) {
+      console.error('Erro ao deletar dia especial:', err);
+      alert('Erro ao deletar. Tente novamente.');
+    } finally {
+      setDeletandoDiaEspecial(null);
+    }
+  }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-slate-100">Painel Admin</h1>
         <Link
           to="/admin/membros"
-          className="text-sm font-medium px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
+          className="text-sm font-medium px-3 py-1.5 rounded-lg bg-gold-500/10 text-gold-400 border border-gold-500/20 hover:bg-gold-500/20 transition-colors"
         >
           👤 Membros
         </Link>
       </div>
 
-      {/* Formulário */}
-      <form
-        onSubmit={handleAdicionar}
-        className="rounded-2xl border border-green-800/30 bg-green-950/30 p-4 space-y-4"
-      >
-        <h2 className="text-sm font-semibold text-green-400 uppercase tracking-wider">
-          Nova Escala
-        </h2>
-
-        <div className="space-y-3">
-          <div>
-            <label htmlFor="data" className="block text-xs font-medium text-slate-500 mb-1">
-              Data
-            </label>
-            <input
-              id="data"
-              type="date"
-              value={dataEscala}
-              onChange={(e) => setDataEscala(e.target.value)}
-              required
-              className="block w-full max-w-full appearance-none min-w-0 px-3 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-100 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all text-sm"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="membro" className="block text-xs font-medium text-slate-500 mb-1">
-              Voluntário
-            </label>
-            <select
-              id="membro"
-              value={membroSelecionado}
-              onChange={(e) => setMembroSelecionado(e.target.value)}
-              required
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-100 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all text-sm"
-            >
-              <option value="">Selecione um voluntário</option>
-              {membros.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="funcao" className="block text-xs font-medium text-slate-500 mb-1">
-              Função
-            </label>
-            <select
-              id="funcao"
-              value={funcaoSelecionada}
-              onChange={(e) => setFuncaoSelecionada(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-100 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all text-sm"
-            >
-              <option value="camera">📹 Câmera</option>
-              <option value="stories">📱 Stories</option>
-              <option value="apoio">🤝 Apoio</option>
-            </select>
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          disabled={salvando}
-          className="w-full px-4 py-3 rounded-xl font-semibold text-sm bg-green-700 text-white hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-lg shadow-green-700/25"
-        >
-          {salvando ? (
-            <span className="inline-flex items-center gap-2">
-              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              Salvando…
-            </span>
-          ) : (
-            '+ Adicionar Escala'
-          )}
-        </button>
-      </form>
-
       {/* Erro de carregamento */}
       {erro && (
-        <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm text-center">
+        <div className="px-4 py-3 rounded-xl bg-primary-500/10 border border-primary-500/30 text-primary-400 text-sm text-center">
           {erro}
           <button onClick={carregarDados} className="ml-2 underline hover:no-underline">
             Tentar novamente
@@ -203,7 +169,7 @@ export default function AdminPage() {
           ‹
         </button>
         <h2 className="text-base font-bold capitalize text-slate-100">
-          {mesFormatado}
+          {format(mesAtual, "MMMM 'de' yyyy", { locale: ptBR })}
         </h2>
         <button
           onClick={() => setMesAtual((prev) => addMonths(prev, 1))}
@@ -214,60 +180,254 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* Lista de escalas do mês */}
-      {loading ? (
-        <div className="space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <SkeletonCard key={i} />
-          ))}
-        </div>
-      ) : escalas.length > 0 ? (
-        <div className="space-y-2">
-          {escalas.map((escala) => {
-            const config = funcaoConfig[escala.funcao] || funcaoConfig.apoio;
-            return (
-              <div
-                key={escala.id}
-                className="flex items-center justify-between p-3 rounded-xl border border-slate-800 bg-slate-900/50"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-slate-500">
-                    {format(escala.data, 'dd/MM/yyyy · EEEE', { locale: ptBR })}
-                  </p>
-                  <p className="text-sm font-medium text-slate-200 truncate">
-                    {escala.nome}
-                  </p>
-                  <span className={`text-xs font-medium ${config.color}`}>
-                    {config.icon} {config.label}
-                  </span>
-                </div>
-                <button
-                  onClick={() => handleDeletar(escala.id)}
-                  disabled={deletando === escala.id}
-                  className="ml-3 w-9 h-9 flex items-center justify-center rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0 disabled:opacity-40"
-                  title="Deletar escala"
-                >
-                  {deletando === escala.id ? (
-                    <svg className="animate-spin h-4 w-4 text-red-400" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                  ) : (
-                    '🗑'
-                  )}
-                </button>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Coluna Esquerda - Adicionar Escala */}
+        <div className="space-y-6">
+          {/* Formulário - Adicionar Escala */}
+          <form
+            onSubmit={handleAdicionar}
+            className="rounded-2xl border border-green-800/30 bg-green-950/30 p-4 space-y-4"
+          >
+            <h2 className="text-sm font-semibold text-green-400 uppercase tracking-wider">
+              ➕ Nova Escala
+            </h2>
+
+            <div className="space-y-3">
+              <div>
+                <label htmlFor="data" className="block text-xs font-medium text-slate-500 mb-1">
+                  Data
+                </label>
+                <input
+                  id="data"
+                  type="date"
+                  value={dataEscala}
+                  onChange={(e) => setDataEscala(e.target.value)}
+                  required
+                  className="block w-full max-w-full appearance-none min-w-0 px-3 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-100 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all text-sm"
+                />
               </div>
-            );
-          })}
+
+              <div>
+                <label htmlFor="membro" className="block text-xs font-medium text-slate-500 mb-1">
+                  Voluntário
+                </label>
+                <select
+                  id="membro"
+                  value={membroSelecionado}
+                  onChange={(e) => setMembroSelecionado(e.target.value)}
+                  required
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-100 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all text-sm"
+                >
+                  <option value="">Selecione um voluntário</option>
+                  {membros.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="funcao" className="block text-xs font-medium text-slate-500 mb-1">
+                  Função
+                </label>
+                <select
+                  id="funcao"
+                  value={funcaoSelecionada}
+                  onChange={(e) => setFuncaoSelecionada(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-100 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all text-sm"
+                >
+                  <option value="camera">📹 Câmera</option>
+                  <option value="stories">📱 Stories</option>
+                  <option value="apoio">🤝 Apoio</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={salvando}
+              className="w-full px-4 py-3 rounded-xl font-semibold text-sm bg-green-700 text-white hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-lg shadow-green-700/25"
+            >
+              {salvando ? (
+                <span className="inline-flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Salvando…
+                </span>
+              ) : (
+                '+ Adicionar Escala'
+              )}
+            </button>
+          </form>
+
+          {/* Lista de escalas */}
+          {loading ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+          ) : escalas.length > 0 ? (
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4 space-y-2">
+              <h3 className="text-sm font-semibold text-slate-300 mb-3">📋 Escalas do Mês</h3>
+              {escalas.map((escala) => (
+                <div
+                  key={escala.id}
+                  className="flex items-center justify-between p-2.5 rounded-lg border border-slate-800 bg-slate-800/30 text-sm"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-slate-500">
+                      {format(escala.data, 'dd/MM/yyyy · EEEE', { locale: ptBR })}
+                    </p>
+                    <p className="text-sm font-medium text-slate-200 truncate">
+                      {escala.nome}
+                    </p>
+                    <span className="text-xs text-slate-400">
+                      {escala.funcao === 'camera' ? '📹' : escala.funcao === 'stories' ? '📱' : '🤝'} {escala.funcao}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleDeletar(escala.id)}
+                    disabled={deletando === escala.id}
+                    className="ml-2 w-8 h-8 flex items-center justify-center rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0 disabled:opacity-40 text-lg"
+                    title="Deletar escala"
+                  >
+                    {deletando === escala.id ? (
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    ) : (
+                      '🗑'
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 rounded-xl bg-slate-900/30 border border-slate-800">
+              <span className="text-3xl">📭</span>
+              <p className="text-slate-500 text-sm mt-2">Nenhuma escala neste mês</p>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="text-center py-10">
-          <span className="text-4xl">📭</span>
-          <p className="text-slate-500 text-sm mt-2">
-            Nenhuma escala neste mês
-          </p>
+
+        {/* Coluna Direita - Gerenciar Dias Especiais */}
+        <div className="space-y-6">
+          {/* Formulário - Adicionar Dia Especial */}
+          <form
+            onSubmit={handleAdicionarDiaEspecial}
+            className="rounded-2xl border border-gold-800/30 bg-gold-950/30 p-4 space-y-4"
+          >
+            <h2 className="text-sm font-semibold text-gold-400 uppercase tracking-wider">
+              ✨ Adicionar Dia Especial
+            </h2>
+            <p className="text-xs text-gold-300/70">
+              Use para marcar dias com escala obrigatória fora dos sábados (ex: Semana Santa, dia 19, etc)
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label htmlFor="data-esp" className="block text-xs font-medium text-slate-500 mb-1">
+                  Data
+                </label>
+                <input
+                  id="data-esp"
+                  type="date"
+                  value={dataDiaEspecial}
+                  onChange={(e) => setDataDiaEspecial(e.target.value)}
+                  required
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50 transition-all text-sm"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="motivo-esp" className="block text-xs font-medium text-slate-500 mb-1">
+                  Motivo
+                </label>
+                <input
+                  id="motivo-esp"
+                  type="text"
+                  placeholder="Ex: Semana Santa, Missa especial, Dia 19"
+                  value={motivoDiaEspecial}
+                  onChange={(e) => setMotivoDiaEspecial(e.target.value)}
+                  required
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-gold-500/50 transition-all text-sm"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={salvandoDiaEspecial}
+              className="w-full px-4 py-3 rounded-xl font-semibold text-sm bg-gold-700 text-white hover:bg-gold-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-lg shadow-gold-700/25"
+            >
+              {salvandoDiaEspecial ? (
+                <span className="inline-flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Salvando…
+                </span>
+              ) : (
+                '✨ Adicionar Dia Especial'
+              )}
+            </button>
+          </form>
+
+          {/* Lista de dias especiais */}
+          {loading ? (
+            <div className="space-y-2">
+              {[...Array(2)].map((_, i) => (
+                <div key={i} className="h-12 bg-slate-700/30 rounded-lg animate-pulse"></div>
+              ))}
+            </div>
+          ) : diasEspeciais.length > 0 ? (
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4 space-y-2">
+              <h3 className="text-sm font-semibold text-slate-300 mb-3">✨ Dias Especiais do Mês</h3>
+              {diasEspeciais.map((dia) => (
+                <div
+                  key={dia.id}
+                  className="flex items-center justify-between p-2.5 rounded-lg border border-gold-900/30 bg-gold-950/20 text-sm"
+                >
+                  <div className="flex-1">
+                    <p className="text-xs text-slate-500">
+                      {format(dia.data, 'dd/MM/yyyy · EEEE', { locale: ptBR })}
+                    </p>
+                    <p className="text-sm font-medium text-gold-300">
+                      {dia.motivo}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDeletarDiaEspecial(dia.id)}
+                    disabled={deletandoDiaEspecial === dia.id}
+                    className="ml-2 w-8 h-8 flex items-center justify-center rounded-lg text-gold-400/60 hover:text-gold-400 hover:bg-gold-500/10 transition-colors shrink-0 disabled:opacity-40 text-lg"
+                    title="Remover dia especial"
+                  >
+                    {deletandoDiaEspecial === dia.id ? (
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    ) : (
+                      '✕'
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 rounded-xl bg-slate-900/30 border border-slate-800">
+              <span className="text-3xl">✅</span>
+              <p className="text-slate-500 text-sm mt-2">Nenhum dia especial neste mês</p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

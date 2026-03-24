@@ -5,6 +5,7 @@ import { getEscalasPorMes, adicionarEscala } from '../firebase/escalas';
 import { getMembrosAtivos } from '../firebase/membros';
 import EscalaCard from '../components/EscalaCard';
 import SkeletonCard from '../components/SkeletonCard';
+import CalendarioEscalas from '../components/CalendarioEscalas';
 
 export default function EscalaPage() {
   const [mesAtual, setMesAtual] = useState(new Date());
@@ -148,6 +149,9 @@ export default function EscalaPage() {
         </button>
       </div>
 
+      {/* Calendário de sábados disponíveis */}
+      <CalendarioEscalas mesAtual={mesAtual} escalas={escalas} />
+
       {/* Botões de ação */}
       <div className="flex gap-2">
         <button
@@ -162,8 +166,8 @@ export default function EscalaPage() {
           onClick={() => setMostrarForm(!mostrarForm)}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm border transition-all active:scale-[0.98] ${
             mostrarForm
-              ? 'bg-red-600/20 text-red-400 border-red-500/30 hover:bg-red-600/30'
-              : 'bg-amber-600/20 text-amber-400 border-amber-500/30 hover:bg-amber-600/30'
+              ? 'bg-gold-600/20 text-gold-400 border-gold-500/30 hover:bg-gold-600/30'
+              : 'bg-primary-600/20 text-primary-400 border-primary-500/30 hover:bg-primary-600/30'
           }`}
         >
           <span className="text-lg">{mostrarForm ? '✕' : '✋'}</span>
@@ -173,14 +177,14 @@ export default function EscalaPage() {
 
       {/* Mensagem de sucesso */}
       {mensagemSucesso && (
-        <div className="px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/30 text-green-400 text-sm text-center animate-pulse">
+        <div className="px-4 py-3 rounded-xl bg-primary-500/10 border border-primary-500/30 text-primary-400 text-sm text-center animate-pulse">
           {mensagemSucesso}
         </div>
       )}
 
       {/* Erro de carregamento */}
       {erro && (
-        <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm text-center">
+        <div className="px-4 py-3 rounded-xl bg-primary-500/10 border border-primary-500/30 text-primary-400 text-sm text-center">
           {erro}
           <button
             onClick={carregarDados}
@@ -195,9 +199,9 @@ export default function EscalaPage() {
       {mostrarForm && (
         <form
           onSubmit={handlePreencher}
-          className="rounded-2xl border border-amber-700/30 bg-amber-950/20 p-4 space-y-4 animate-[fadeIn_0.2s_ease-out]"
+          className="rounded-2xl border border-gold-700/30 bg-gold-950/20 p-4 space-y-4 animate-[fadeIn_0.2s_ease-out]"
         >
-          <h2 className="text-sm font-semibold text-amber-400 uppercase tracking-wider">
+          <h2 className="text-sm font-semibold text-gold-400 uppercase tracking-wider">
             📋 Preencher minha escala
           </h2>
 
@@ -211,7 +215,7 @@ export default function EscalaPage() {
                 value={membroSelecionado}
                 onChange={(e) => setMembroSelecionado(e.target.value)}
                 required
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all text-sm"
+                className="w-full px-3 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50 transition-all text-sm"
               >
                 <option value="">Selecione seu nome</option>
                 {membros.map((m) => (
@@ -232,7 +236,7 @@ export default function EscalaPage() {
                 value={dataEscala}
                 onChange={(e) => setDataEscala(e.target.value)}
                 required
-                className="block w-full max-w-full appearance-none min-w-0 px-3 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all text-sm"
+                className="block w-full max-w-full appearance-none min-w-0 px-3 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50 transition-all text-sm"
               />
             </div>
 
@@ -244,7 +248,7 @@ export default function EscalaPage() {
                 id="vol-funcao"
                 value={funcaoSelecionada}
                 onChange={(e) => setFuncaoSelecionada(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all text-sm"
+                className="w-full px-3 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50 transition-all text-sm"
               >
                 <option value="camera">📹 Câmera</option>
                 <option value="stories">📱 Stories</option>
@@ -256,7 +260,7 @@ export default function EscalaPage() {
           <button
             type="submit"
             disabled={salvando}
-            className="w-full px-4 py-3 rounded-xl font-semibold text-sm bg-amber-600 text-white hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-lg shadow-amber-600/25"
+            className="w-full px-4 py-3 rounded-xl font-semibold text-sm bg-primary-600 text-white hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-lg shadow-primary-600/25"
           >
             {salvando ? (
               <span className="inline-flex items-center gap-2">
@@ -303,7 +307,7 @@ export default function EscalaPage() {
           </p>
           <button
             onClick={() => setMostrarForm(true)}
-            className="mt-2 px-4 py-2 rounded-xl text-sm font-medium text-amber-400 bg-amber-600/10 border border-amber-500/20 hover:bg-amber-600/20 transition-colors"
+            className="mt-2 px-4 py-2 rounded-xl text-sm font-medium text-gold-400 bg-gold-600/10 border border-gold-500/20 hover:bg-gold-600/20 transition-colors"
           >
             ✋ Seja o primeiro a preencher!
           </button>
